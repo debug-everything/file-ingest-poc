@@ -129,7 +129,7 @@ facade is CPU-bound (about 19 MB/s for 1 GB), not network-bound.
 | Piece | Host | How it gets there |
 |---|---|---|
 | Partner | GitHub Release `test-files-v1` (four CSVs + `manifest.json`) | `Publish test files` workflow, run once |
-| Facade | Railway, built from `facade-api/Dockerfile` | Railway redeploys on every push to `main` that touches `facade-api/` |
+| Facade | Railway, built from `facade-api/Dockerfile` (see `railway.json`) | Railway redeploys on every push to `main` that touches `facade-api/` |
 | MFT client | GitHub Actions runner | `MFT run` workflow, triggered by hand |
 
 AGENTS.md says Render for the facade. I switched to Railway: no 0.1 CPU cap, no 5 GB bandwidth cap, no
@@ -138,9 +138,8 @@ cold starts, and the whole run plan costs about a dollar of usage.
 ### One-time setup
 
 1. Publish the files: `gh workflow run publish-test-files.yml`, then check the release has five assets.
-2. In Railway: new project, deploy from this GitHub repo, then in the service settings set
-   - Root Directory: `/facade-api`
-   - Config file path: `/facade-api/railway.json`
+2. In Railway: new project, deploy from this GitHub repo. The build settings come from `railway.json`
+   at the repo root, so there is nothing to configure for the build. Then set
    - Variables:
      - `FACADE_TOKEN` = a fresh `openssl rand -hex 24` (not the one from your local `.env`)
      - `PARTNER_MODE` = `static`

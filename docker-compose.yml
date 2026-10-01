@@ -15,7 +15,9 @@ services:
 
   # No healthcheck here on purpose. At 0.1 CPU a probe process would eat into the measurements.
   facade:
-    build: ./facade-api
+    build:
+      context: .
+      dockerfile: facade-api/Dockerfile
     environment:
       FACADE_TOKEN: ${FACADE_TOKEN:?set FACADE_TOKEN in .env}
       PARTNER_MODE: api
