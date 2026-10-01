@@ -1,0 +1,41 @@
+name: Publish test files
+
+# One-time: generate the four CSVs and attach them (plus manifest.json) to a release.
+# The release is the "partner" in the cloud runs.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TAG: test-files-v1
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: partner-file-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Exits non-zero if any sha256 differs from checksums.json. No dependencies to install.
+      - name: Generate and verify
+        run: node src/generate.js
+
+      - name: Write manifest
+        env:
+          ASSET_BASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.TAG }}
+        run: node src/manifest.js > data/manifest.json && cat data/manifest.json
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" > /dev/null 2>&1 \
+            || gh release create "$TAG" --title "Test files v1" --notes "Seeded settlement-like CSVs for the streaming POC. See partner-file-api/checksums.json."
+          gh release upload "$TAG" data/*.csv data/manifest.json --clobber

@@ -1,0 +1,21 @@
+{
+  "name": "partner-file-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "generate": "node src/generate.js",
+    "lint": "eslint .",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0"
+  },
+  "packageManager": "pnpm@10.32.0"
+}

@@ -1,0 +1,55 @@
+name: MFT run
+
+# The MFT client (network C). Pulls one file through the facade and reports.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Label for the report
+        default: S1-baseline
+      variant:
+        type: choice
+        options: [10mb, 100mb, 500mb, 1gb]
+        default: 100mb
+      mode:
+        type: choice
+        options: [httpx, curl]
+        default: httpx
+      read_rate_mbps:
+        description: Slow consumer, megabits per second (optional)
+      abort_after_mb:
+        description: Abort after this many MB (optional)
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      # Inputs go through env, never straight into the script, so they can't inject shell.
+      - name: Pull through the facade
+        working-directory: mft-client
+        env:
+          FACADE_URL: ${{ secrets.FACADE_URL }}
+          FACADE_TOKEN: ${{ secrets.FACADE_TOKEN }}
+          SCENARIO: ${{ inputs.scenario }}
+          VARIANT: ${{ inputs.variant }}
+          MODE: ${{ inputs.mode }}
+          READ_RATE_MBPS: ${{ inputs.read_rate_mbps }}
+          ABORT_AFTER_MB: ${{ inputs.abort_after_mb }}
+        run: |
+          args=(--facade-url "$FACADE_URL" --variant "$VARIANT" --mode "$MODE" --scenario "$SCENARIO"
+                --out "$RUNNER_TEMP/settlement.csv" --warmup)
+          [ -n "$READ_RATE_MBPS" ] && args+=(--read-rate-mbps "$READ_RATE_MBPS")
+          [ -n "$ABORT_AFTER_MB" ] && args+=(--abort-after-mb "$ABORT_AFTER_MB")
+          uv run python -m mft run "${args[@]}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results
+          path: results/

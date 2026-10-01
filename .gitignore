@@ -1,0 +1,11 @@
+node_modules/
+.env
+results/
+partner-file-api/data/
+*.csv
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.DS_Store

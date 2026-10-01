@@ -1,0 +1,31 @@
+# Local control group. Limits mirror the free tiers (Render free: 512 MB / 0.1 CPU).
+# Generate the test files once before `up`: (cd partner-file-api && pnpm generate)
+services:
+  partner:
+    build: ./partner-file-api
+    environment:
+      PARTNER_TOKEN: ${PARTNER_TOKEN:?set PARTNER_TOKEN in .env}
+      DEFAULT_VARIANT: ${DEFAULT_VARIANT:-100mb}
+      MAX_CONCURRENT_DOWNLOADS: ${MAX_CONCURRENT_DOWNLOADS:-2}
+    volumes:
+      - ./partner-file-api/data:/data:ro
+    ports:
+      - "${PARTNER_HOST_PORT:-8080}:8080"
+    mem_limit: 1g
+
+  # No healthcheck here on purpose. At 0.1 CPU a probe process would eat into the measurements.
+  facade:
+    build: ./facade-api
+    environment:
+      FACADE_TOKEN: ${FACADE_TOKEN:?set FACADE_TOKEN in .env}
+      PARTNER_MODE: api
+      PARTNER_BASE_URL: http://partner:8080
+      PARTNER_TOKEN: ${PARTNER_TOKEN}
+      METRICS_INTERVAL_MS: ${METRICS_INTERVAL_MS:-1000}
+      BUFFER_MODE_MAX_BYTES: ${BUFFER_MODE_MAX_BYTES:-157286400}
+    ports:
+      - "${FACADE_HOST_PORT:-8081}:8080"
+    depends_on:
+      - partner
+    mem_limit: 512m
+    cpus: ${FACADE_CPUS:-0.1}
