@@ -8,8 +8,27 @@ MFT client (Python)  ──GET──▶  Facade (Node, node:http + undici)  ─�
   writes + fsyncs               streams, samples CPU/mem                     serves pre-generated CSVs
 ```
 
-It runs two ways: all three pieces locally in Docker, or spread over three networks in the cloud
-(GitHub Releases for the files, Railway for the facade, a GitHub Actions runner for the client).
+It runs two ways: all three pieces on my machine, or spread over three separate networks in the cloud.
+
+## Where each piece is hosted
+
+| Piece | Code | Locally | In the cloud |
+|---|---|---|---|
+| Partner File API (the file source) | `partner-file-api/` | Docker container, `http://localhost:8080` | Not running as a server. The same four CSVs plus `manifest.json` sit on GitHub Release [`test-files-v1`](https://github.com/debug-everything/file-ingest-poc/releases/tag/test-files-v1) and are served by GitHub's download CDN. |
+| Facade API (the thing under test) | `facade-api/` | Docker container, `http://localhost:8081`, capped at 512 MB / 0.1 CPU | Railway, project `robust-tranquility`, service `file-ingest-poc`, region `sfo`, trial plan (about 1 GB memory). Address: `https://file-ingest-poc-production.up.railway.app` |
+| MFT client (the puller) | `mft-client/` | Runs straight on my machine with `uv` | A GitHub Actions runner (`ubuntu-latest`, which lives on Azure), started by the `MFT run` workflow |
+
+So a cloud run crosses three networks: GitHub's CDN, Railway, and Azure. A local run never leaves Docker
+and my laptop, which makes it the control group.
+
+A few things that follow from this:
+
+- The partner server only exists locally. Anything that needs partner logs (abort seen upstream, `206`
+  on resume, throttling) is judged on local runs. In the cloud the facade's own metrics are the evidence.
+- The facade is the same code in both places. `PARTNER_MODE=api` talks to the local partner,
+  `PARTNER_MODE=static` reads the release manifest and follows GitHub's redirect to the CDN.
+- The cloud facade is public on the internet, so every endpoint except `/healthz` needs the bearer token.
+  That token lives in Railway's variables and in this repo's Actions secrets, nowhere in the code.
 
 ## What you need
 
@@ -126,11 +145,13 @@ facade is CPU-bound (about 19 MB/s for 1 GB), not network-bound.
 
 ## Cloud deploy
 
-| Piece | Host | How it gets there |
+Hosts are listed in the table at the top. This is how each piece gets there:
+
+| Piece | How it deploys | Trigger |
 |---|---|---|
-| Partner | GitHub Release `test-files-v1` (four CSVs + `manifest.json`) | `Publish test files` workflow, run once |
-| Facade | Railway, built from `facade-api/Dockerfile` (see `railway.json`) | Railway redeploys on every push to `main` that touches `facade-api/` |
-| MFT client | GitHub Actions runner | `MFT run` workflow, triggered by hand |
+| Partner files | `Publish test files` workflow generates the CSVs, checks them against `checksums.json`, uploads to the release | By hand, once |
+| Facade | Railway builds `facade-api/Dockerfile` using `railway.json` at the repo root | Every push to `main` that touches `facade-api/` or `railway.json` |
+| MFT client | `MFT run` workflow | By hand, per run |
 
 AGENTS.md says Render for the facade. I switched to Railway: no 0.1 CPU cap, no 5 GB bandwidth cap, no
 cold starts, and the whole run plan costs about a dollar of usage.
