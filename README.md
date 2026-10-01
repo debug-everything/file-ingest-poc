@@ -120,8 +120,9 @@ facade is CPU-bound (about 19 MB/s for 1 GB), not network-bound.
 - `--read-rate-mbps` is megabits, matching the partner's `throttle_kbps`. The S2 script uses 40 Mbit/s
   (5 MB/s) so the run takes 21 s instead of nearly 3 minutes.
 - No healthcheck on the facade container. A probe process at 0.1 CPU would skew the numbers.
-- Facade `static` mode (manifest + redirect following) is written but not exercised yet. It gets its
-  first real test in the cloud wiring check.
+- Redirects are followed by hand instead of with undici's redirect option, so the redirect hop can be
+  timed (`redirectMs`) and every hop checked against the host allowlist. Tested from my machine against
+  the real release: redirect followed, `Range` gives a `206` after the redirect, no `Content-Encoding`.
 
 ## Cloud deploy
 
